@@ -15,6 +15,6 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     is_active = Column(Boolean, default=False)
 
-    # Relationship: one user → many rooms
+    # One user → many rooms
     rooms = relationship("Room", back_populates="owner",
                          cascade="all, delete-orphan")

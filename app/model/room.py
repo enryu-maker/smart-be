@@ -15,8 +15,12 @@ class Room(Base):
     # Foreign key to User
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
-    # Relationship back to User
+    # Relationships
     owner = relationship("User", back_populates="rooms")
+
+    # ✅ Add this missing relationship (fixes your error)
+    devices = relationship("Device", back_populates="room",
+                           cascade="all, delete-orphan")
 
 
 class Device(Base):
@@ -29,7 +33,7 @@ class Device(Base):
     date_added = Column(DateTime, default=datetime.datetime.utcnow)
 
     # Device status (on/off)
-    is_on = Column(Boolean, default=False)  # False = OFF, True = ON
+    is_on = Column(Boolean, default=False)
 
     # Foreign key to Room
     room_id = Column(Integer, ForeignKey("rooms.id"), nullable=False)
