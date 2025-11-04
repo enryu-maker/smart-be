@@ -139,3 +139,39 @@ async def delete_device(device_id: int, db: db_dependency, user: user_dependency
     db.delete(device)
     db.commit()
     return {"message": "Device deleted successfully."}
+
+
+@router.get("/{device_id}/status", status_code=status.HTTP_200_OK)
+async def get_device_status(
+    device_id: int,
+    db: db_dependency,
+    user: user_dependency
+):
+    """Check the status of a specific device (only if owned by the user)"""
+
+    device = (
+        db.query(Device)
+        .join(Room)
+        .filter(Device.id == device_id, Room.user_id == user["user_id"])
+        .first()
+    )
+
+    if not device:
+        raise HTTPException(
+            status_code=404,
+            detail="Device not found or not yours."
+        )
+
+    # Convert device.status → True | False | None
+    # Adjust logic based on how your Device model stores status
+    if device.status is True:
+        status_value = True
+    elif device.status is False:
+        status_value = False
+    else:
+        status_value = None
+
+    return {
+        "device_id": device.id,
+        "status": status_value
+    }
