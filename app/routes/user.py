@@ -119,6 +119,10 @@ async def verify_user_otp(verify_request: OTPVerify, db: db_dependency):
     user = db.query(User).filter(User.phone_number ==
                                  verify_request.phone_number).first()
 
+    print(
+        f"Verifying OTP for phone number: {verify_request.phone_number}, provided OTP: {verify_request.otp}")
+    print(user.otp)
+
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -137,9 +141,9 @@ async def verify_user_otp(verify_request: OTPVerify, db: db_dependency):
     db.commit()
 
     access_token = create_accesss_token(
-        username=user.name,
+        name=user.name,
         user_id=user.id,
-        expires_delta=timedelta(days=90)
+        expiry=timedelta(days=90)
     )
 
     return {

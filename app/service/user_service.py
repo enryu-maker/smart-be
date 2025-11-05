@@ -15,8 +15,8 @@ from passlib.context import CryptContext
 load_dotenv()
 
 
-SECRET_KEY = os.getenv("SECRET_KEY")
-ALGORITHM = os.getenv("ALGORITHM")
+SECRET_KEY = "cf7b985a1e9eeb2334a0283f06d4d3b65041b1a20c8f4fcb9d4a3a7b59e4cc35"
+ALGORITHM = "HS256"
 
 oauth2_bearer = OAuth2PasswordBearer(tokenUrl='/api/user/verify-user')
 bcrypt_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
