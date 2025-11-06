@@ -4,7 +4,6 @@ from typing import Optional
 
 
 class DeviceBase(BaseModel):
-    device_id: str
     device_name: Optional[str] = None
     device_type: Optional[str] = None
 
