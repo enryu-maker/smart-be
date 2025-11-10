@@ -1,5 +1,5 @@
 from typing import Annotated, List
-from fastapi import APIRouter, Depends, HTTPException, status, Form
+from fastapi import APIRouter, Depends, HTTPException, status, Form, Query
 from sqlalchemy.orm import Session
 from datetime import datetime
 import hashlib
@@ -105,30 +105,32 @@ async def create_device(
 
 
 @router.get("/", response_model=List[DeviceResponse])
-async def list_user_devices(db: db_dependency, user: user_dependency):
-    """List all devices belonging to the user's rooms"""
-    devices = (
+async def list_user_devices(
+    db: db_dependency,
+    user: user_dependency,
+    room_id: int = Query(None, description="Filter devices by room_id")
+):
+    """List all devices belonging to the user's rooms (optionally filter by room_id)."""
+    query = (
         db.query(Device)
         .join(Room)
         .filter(Room.user_id == user["user_id"])
-        .all()
     )
+
+    if room_id is not None:
+        query = query.filter(Device.room_id == room_id)
+
+    devices = query.all()
     return devices
 
 
 @router.patch("/{device_id}/toggle/", response_model=DeviceResponse)
-async def toggle_device(device_id: int, db: db_dependency, user: user_dependency):
-    """Toggle ON/OFF for a device (only if owned by the user)"""
-    device = (
-        db.query(Device)
-        .join(Room)
-        .filter(Device.id == device_id, Room.user_id == user["user_id"])
-        .first()
-    )
+async def toggle_device(device_id: int, db: db_dependency):
+    """Public endpoint to toggle ON/OFF for a device (no user authentication)."""
+    device = db.query(Device).filter(Device.id == device_id).first()
 
     if not device:
-        raise HTTPException(
-            status_code=404, detail="Device not found or not yours.")
+        raise HTTPException(status_code=404, detail="Device not found.")
 
     device.is_on = not device.is_on
     db.commit()
