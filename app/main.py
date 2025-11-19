@@ -8,7 +8,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.responses import JSONResponse
 import logging
 from app.database import Base, engine
-from app.routes import user, device_routes, room_routes
+from app.routes import user, device_routes, room_routes, admin
 
 # Create FastAPI app instance
 app = FastAPI()
@@ -53,6 +53,8 @@ Base.metadata.create_all(bind=engine)
 app.include_router(user.router)
 app.include_router(device_routes.router)
 app.include_router(room_routes.router)
+app.include_router(admin.router)
+
 
 
 @app.get('/')

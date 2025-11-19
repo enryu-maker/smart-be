@@ -41,7 +41,7 @@ async def create_device(
     # Step 1: Verify room ownership
     room = (
         db.query(Room)
-        .filter(Room.id == room_id, Room.user_id == user["user_id"])
+        .filter(Room.id == room_id, Room.user_id == user["id"])
         .first()
     )
 
@@ -114,7 +114,7 @@ async def list_user_devices(
     query = (
         db.query(Device)
         .join(Room)
-        .filter(Room.user_id == user["user_id"])
+        .filter(Room.user_id == user["id"])
     )
 
     if room_id is not None:
@@ -148,7 +148,7 @@ async def get_single_device(
     device = (
         db.query(Device)
         .join(Room)
-        .filter(Device.id == device_id, Room.user_id == user["user_id"])
+        .filter(Device.id == device_id, Room.user_id == user["id"])
         .first()
     )
 
@@ -167,7 +167,7 @@ async def delete_device(device_id: int, db: db_dependency, user: user_dependency
     device = (
         db.query(Device)
         .join(Room)
-        .filter(Device.id == device_id, Room.user_id == user["user_id"])
+        .filter(Device.id == device_id, Room.user_id == user["id"])
         .first()
     )
 
