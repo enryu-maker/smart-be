@@ -89,8 +89,37 @@ async def admin_login(login: AdminLogin, db: db_dependency):
         "access_token": access_token
     }
 
+# api for user active status management
 
-@router.get("/admin/all-dashboard-data/")
+
+@router.put("/toggle-user-status/{user_id}/")
+async def admin_toggle_user_status(user_id: int, db: db_dependency, user: admin_dependency):
+    # Inline admin verification
+    db_user = db.query(Admin).filter(Admin.id == user['user_id']).first()
+    if not db_user:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required."
+        )
+    print(user_id)
+    target_user = db.query(User).filter(User.id == user_id).first()
+    print(target_user)
+    if not target_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found."
+        )
+    target_user.is_active = not target_user.is_active
+    db.commit()
+    db.refresh(target_user)
+    return {
+        "message": f"User {'activated' if target_user.is_active else 'deactivated'} successfully.",
+        "user_id": target_user.id,
+        "is_active": target_user.is_active
+    }
+
+
+@router.get("/all-dashboard-data/")
 async def admin_list_all_rooms(db: db_dependency, user: admin_dependency):
     # Inline admin verification
     db_user = db.query(Admin).filter(Admin.id == user['user_id']).first()
@@ -110,7 +139,7 @@ async def admin_list_all_rooms(db: db_dependency, user: admin_dependency):
     }
 
 
-@router.get("/admin/rooms/", response_model=List[RoomResponse])
+@router.get("/rooms/", response_model=List[RoomResponse])
 async def admin_list_all_rooms(db: db_dependency, user: admin_dependency):
     # Inline admin verification
     db_user = db.query(Admin).filter(Admin.id == user['user_id']).first()
@@ -124,7 +153,7 @@ async def admin_list_all_rooms(db: db_dependency, user: admin_dependency):
     return rooms
 
 
-@router.get("/admin/users/", response_model=List[UserResponse])
+@router.get("/users/", response_model=List[UserResponse])
 async def admin_list_all_users(db: db_dependency, user: admin_dependency):
     # Inline admin verification
     db_user = db.query(Admin).filter(Admin.id == user['user_id']).first()
@@ -138,7 +167,7 @@ async def admin_list_all_users(db: db_dependency, user: admin_dependency):
     return users
 
 
-@router.get("/admin/devices/", response_model=List[DeviceResponse])
+@router.get("/devices/", response_model=List[DeviceResponse])
 async def admin_list_all_devices(db: db_dependency, user: admin_dependency):
     # Inline admin verification
     db_user = db.query(Admin).filter(Admin.id == user['user_id']).first()
@@ -150,3 +179,71 @@ async def admin_list_all_devices(db: db_dependency, user: admin_dependency):
 
     devices = db.query(Device).all()
     return devices
+
+# delete room by admin
+
+
+@router.delete("/rooms/{room_id}/", status_code=status.HTTP_200_OK)
+async def admin_delete_room(room_id: int, db: db_dependency, user: admin_dependency):
+    # Inline admin verification
+    db_user = db.query(Admin).filter(Admin.id == user['user_id']).first()
+    if not db_user:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required."
+        )
+
+    room = db.query(Room).filter(Room.id == room_id).first()
+    if not room:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Room not found."
+        )
+
+    db.delete(room)
+    db.commit()
+    return {"message": "Room deleted successfully."}
+
+
+@router.delete("/devices/{device_id}/", status_code=status.HTTP_200_OK)
+async def admin_delete_device(device_id: int, db: db_dependency, user: admin_dependency):
+    # Inline admin verification
+    db_user = db.query(Admin).filter(Admin.id == user['user_id']).first()
+    if not db_user:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required."
+        )
+
+    device = db.query(Device).filter(Device.id == device_id).first()
+    if not device:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Device not found."
+        )
+
+    db.delete(device)
+    db.commit()
+    return {"message": "Device deleted successfully."}
+
+
+@router.delete("/users/{user_id}/", status_code=status.HTTP_200_OK)
+async def admin_delete_user(user_id: int, db: db_dependency, user: admin_dependency):
+    # Inline admin verification
+    db_user = db.query(Admin).filter(Admin.id == user['user_id']).first()
+    if not db_user:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required."
+        )
+
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found."
+        )
+
+    db.delete(target_user)
+    db.commit()
+    return {"message": "User deleted successfully."}

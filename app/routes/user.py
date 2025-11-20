@@ -83,8 +83,10 @@ async def register_user(
 
 @router.post("/login/", status_code=status.HTTP_200_OK)
 async def login_user(login_request: LoginRequest, db: db_dependency):
-    user = db.query(User).filter(User.phone_number ==
-                                 login_request.phone_number).first()
+
+    user = db.query(User).filter(
+        User.phone_number == login_request.phone_number
+    ).first()
 
     if not user:
         raise HTTPException(
@@ -92,12 +94,14 @@ async def login_user(login_request: LoginRequest, db: db_dependency):
             detail="User not found."
         )
 
+    # If user exists but NOT active → return status to frontend
     if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Account not activated. Please verify your phone number."
-        )
+        return {
+            "status": False,
+            "message": "Account not activated. Please verify your phone number."
+        }
 
+    # User is active → Send OTP
     otp = generate_otp()
     user.otp = otp
 
@@ -111,17 +115,19 @@ async def login_user(login_request: LoginRequest, db: db_dependency):
         )
 
     db.commit()
-    return {"message": "OTP sent successfully. Please verify to proceed."}
+
+    return {
+        "status": True,
+        "message": "OTP sent successfully. Please verify to proceed."
+    }
 
 
 @router.post("/verify/", status_code=status.HTTP_200_OK)
 async def verify_user_otp(verify_request: OTPVerify, db: db_dependency):
-    user = db.query(User).filter(User.phone_number ==
-                                 verify_request.phone_number).first()
 
-    print(
-        f"Verifying OTP for phone number: {verify_request.phone_number}, provided OTP: {verify_request.otp}")
-    print(user.otp)
+    user = db.query(User).filter(
+        User.phone_number == verify_request.phone_number
+    ).first()
 
     if not user:
         raise HTTPException(
@@ -129,17 +135,25 @@ async def verify_user_otp(verify_request: OTPVerify, db: db_dependency):
             detail="User not found."
         )
 
+    # Optional safety check (should not happen because login already blocks)
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account not activated. Please verify first."
+        )
+
+    # Validate OTP
     if str(user.otp) != str(verify_request.otp):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid OTP."
         )
 
-    user.is_active = True
+    # Clear OTP after successful verification
     user.otp = None
-
     db.commit()
 
+    # Create token
     access_token = create_accesss_token(
         name=user.name,
         user_id=user.id,
