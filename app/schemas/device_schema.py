@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
+from app.schemas.user import BlockchainBlockResponse
 
 
 class DeviceBase(BaseModel):
@@ -23,6 +24,7 @@ class DeviceResponse(DeviceBase):
     is_on: bool
     date_added: datetime
     room_id: int
+    blockchain: List[BlockchainBlockResponse] = []
 
     class Config:
         from_attributes = True  # For ORM model support

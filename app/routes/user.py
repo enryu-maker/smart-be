@@ -1,11 +1,14 @@
 from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status, Form
 from sqlalchemy.orm import Session
-from datetime import timedelta
+from datetime import datetime, timedelta
+import hashlib
+import json
 
 from app.schemas.user import OTPVerify, LoginRequest, UserResponse
 from app.database import SessionLocale
 from app.model.user import User
+from app.model.blockchain import UserBlock
 from app.service.user_service import (
     generate_otp,
     send_otp,
@@ -72,6 +75,36 @@ async def register_user(
         db.add(new_user)
         db.commit()
         db.refresh(new_user)
+
+        # --- Add user to blockchain ---
+        last_block = (
+            db.query(UserBlock)
+            .order_by(UserBlock.id.desc())
+            .first()
+        )
+        previous_hash = last_block.hash if last_block else None
+
+        data_json = json.dumps({
+            "user_id": new_user.id,
+            "name": name,
+            "email": email,
+            "phone_number": phone_number,
+            "timestamp": str(datetime.utcnow())
+        })
+
+        block_content = f"{new_user.id}{data_json}{previous_hash or ''}"
+        current_hash = hashlib.sha256(block_content.encode()).hexdigest()
+
+        new_block = UserBlock(
+            user_id=new_user.id,
+            data=data_json,
+            previous_hash=previous_hash,
+            hash=current_hash
+        )
+
+        db.add(new_block)
+        db.commit()
+
         return {"message": "OTP sent successfully. Please verify your phone number."}
     except Exception as e:
         db.rollback()

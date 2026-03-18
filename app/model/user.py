@@ -18,3 +18,7 @@ class User(Base):
     # One user → many rooms
     rooms = relationship("Room", back_populates="owner",
                          cascade="all, delete-orphan")
+
+    # One user → many blockchain blocks
+    blockchain = relationship("UserBlock", back_populates="user",
+                              cascade="all, delete-orphan")

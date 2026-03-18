@@ -8,6 +8,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.responses import JSONResponse
 import logging
 from app.database import Base, engine
+from app.model import blockchain
 from app.routes import user, device_routes, room_routes, admin
 
 # Create FastAPI app instance

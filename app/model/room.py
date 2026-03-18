@@ -32,3 +32,6 @@ class Device(Base):
 
     room_id = Column(Integer, ForeignKey("rooms.id"), nullable=False)
     room = relationship("Room", back_populates="devices")
+
+    blockchain = relationship(
+        "DeviceBlock", back_populates="device", cascade="all, delete-orphan")

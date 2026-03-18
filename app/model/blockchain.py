@@ -17,8 +17,27 @@ class DeviceBlock(Base):
     hash = Column(String, nullable=False)
 
     room = relationship("Room", back_populates="blockchain")
+    device = relationship("Device", back_populates="blockchain")
 
     def calculate_hash(self):
         """Generate SHA256 hash of block contents"""
         block_content = f"{self.room_id}{self.device_id}{self.timestamp}{self.data}{self.previous_hash}"
+        return hashlib.sha256(block_content.encode()).hexdigest()
+
+
+class UserBlock(Base):
+    __tablename__ = "user_blocks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+    data = Column(Text)  # JSON string of full user info
+    previous_hash = Column(String, nullable=True)
+    hash = Column(String, nullable=False)
+
+    user = relationship("User", back_populates="blockchain")
+
+    def calculate_hash(self):
+        """Generate SHA256 hash of block contents"""
+        block_content = f"{self.user_id}{self.timestamp}{self.data}{self.previous_hash}"
         return hashlib.sha256(block_content.encode()).hexdigest()
