@@ -3,10 +3,12 @@ from fastapi import APIRouter, Depends, HTTPException, status, Form, Query
 from sqlalchemy.orm import Session
 from datetime import datetime
 import hashlib
+import uuid
 from app.database import SessionLocale
-from app.model.room import Device, Room
+from app.model.room import Device, Room, DeviceAction
 from app.model.blockchain import DeviceBlock
-from app.schemas.device_schema import DeviceCreate, DeviceResponse
+from app.schemas.device_schema import DeviceCreate, DeviceResponse, DeviceStatusUpdate, DeviceActionResponse
+from app.schemas.user import BlockchainBlockResponse
 from app.service.user_service import decode_access_token
 import json
 
@@ -204,3 +206,81 @@ async def get_device_status(
         status_value = None
 
     return status_value
+
+
+@router.post("/{device_id}/status-update", response_model=DeviceActionResponse)
+async def update_device_status(
+    device_id: int,
+    status_data: DeviceStatusUpdate,
+    db: db_dependency
+):
+    """
+    App calls this to update device status.
+    Creates a pending action with a unique press_id.
+    """
+    device = db.query(Device).filter(Device.id == device_id).first()
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found.")
+
+    # Generate a unique press_id
+    press_id = str(uuid.uuid4())
+
+    try:
+        # Create a new DeviceAction (the queue entry)
+        new_action = DeviceAction(
+            press_id=press_id,
+            device_id=device_id,
+            device_status=status_data.device_status,
+            device_type=status_data.device_type,
+            status_code=status_data.status_code,
+            is_pressed=False,
+            timestamp=datetime.utcnow()
+        )
+        db.add(new_action)
+        
+        # Also update the main device record (current state)
+        device.is_on = status_data.device_status
+        device.device_type = status_data.device_type
+        device.status_code = status_data.status_code
+        
+        db.commit()
+        db.refresh(new_action)
+        return new_action
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create device action: {str(e)}"
+        )
+
+
+@router.get("/actions/pending", response_model=List[DeviceActionResponse])
+async def get_pending_actions(db: db_dependency):
+    """
+    IOT device calls this to get all pending button presses/actions.
+    Generic: Returns all unpressed actions across all devices.
+    """
+    actions = (
+        db.query(DeviceAction)
+        .filter(DeviceAction.is_pressed == False)
+        .order_by(DeviceAction.id.asc())
+        .all()
+    )
+    return actions
+
+
+@router.post("/actions/confirm/{press_id}")
+async def confirm_action(press_id: str, db: db_dependency):
+    """
+    IOT device calls this to mark a button press as processed.
+    """
+    action = db.query(DeviceAction).filter(DeviceAction.press_id == press_id).first()
+    
+    if not action:
+        raise HTTPException(status_code=404, detail="Action (press_id) not found.")
+    
+    action.is_pressed = True
+    db.commit()
+    
+    return {"message": "Action confirmed and marked as pressed.", "press_id": press_id}
